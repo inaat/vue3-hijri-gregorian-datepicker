@@ -216,35 +216,26 @@ const yearRangeStart = ref(isHijri.value ? 1400 : 2000);
 const formattedHour = computed(() => pad(selectedHour.value));
 const formattedMinute = computed(() => pad(selectedMinute.value));
 
-// Improved helper function to parse dates consistently
+// Helper function to parse dates consistently
 const parseInputDate = (dateString, calendarType) => {
   if (!dateString) return new Date();
   
   try {
     if (calendarType === "hijri") {
-      // Handle Hijri date parsing
-      // First try direct format that matches our expected input
-      const parsed = moment(dateString, "iDD-iMM-iYYYY");
-      if (parsed.isValid()) {
-        return parsed.toDate();
-      }
-      
-      // Try other Hijri formats if the first one fails
-      const formats = ["iYYYY/iMM/iDD", "iDD/iMM/iYYYY"];
+      // Try to parse as Hijri date with several common formats
+      const formats = ["iDD-iMM-iYYYY", "iYYYY/iMM/iDD", "iDD/iMM/iYYYY"];
       for (const fmt of formats) {
         const parsed = moment(dateString, fmt);
         if (parsed.isValid()) return parsed.toDate();
       }
-      
-      // If no format matches, fallback to current date
-      console.warn("Invalid Hijri date format, using current date");
-      return moment().toDate();
+      // If no format matches, try moment's automatic parsing
+      return moment(dateString).toDate();
     } else {
-      // For Gregorian calendar
+      // For Gregorian, first try to parse as a regular Date
       const date = new Date(dateString);
       if (!isNaN(date)) return date;
       
-      // Try parsing with common formats
+      // If that fails, try common formats
       const formats = ["yyyy-MM-dd", "MM/dd/yyyy", "dd-MM-yyyy", "dd/MM/yyyy"];
       for (const fmt of formats) {
         try {
@@ -255,8 +246,11 @@ const parseInputDate = (dateString, calendarType) => {
         }
       }
       
-      // Fallback to current date
-      console.warn("Invalid Gregorian date format, using current date");
+      // Last resort: try with moment
+      const momentDate = moment(dateString);
+      if (momentDate.isValid()) return momentDate.toDate();
+      
+      // Fallback to current date if all parsing fails
       return new Date();
     }
   } catch (e) {
@@ -354,16 +348,12 @@ const translations = computed(() => {
 });
 
 const currentMonth = computed(() => {
-  if (!selectedDate.value) return '';
-  
   return isHijri.value
     ? translations.value.monthsHijri[moment(selectedDate.value).iMonth()]
     : translations.value.monthsGregorian[selectedDate.value.getMonth()];
 });
 
 const currentYear = computed(() => {
-  if (!selectedDate.value) return '';
-  
   return isHijri.value
     ? moment(selectedDate.value).format("iYYYY")
     : moment(selectedDate.value).format("yyyy");
@@ -382,8 +372,6 @@ const daysOfWeek = computed(() => {
 });
 
 const daysInMonth = computed(() => {
-  if (!selectedDate.value) return [];
-  
   const days = [];
   const startOfMonth = isHijri.value
     ? moment(selectedDate.value).startOf("iMonth")
@@ -424,8 +412,6 @@ const daysInMonth = computed(() => {
 const pad = (value) => String(value).padStart(2, "0");
 
 const prevMonth = () => {
-  if (!selectedDate.value) return;
-  
   selectedDate.value = isHijri.value
     ? moment(selectedDate.value).subtract(1, "iMonth").toDate()
     : subMonths(selectedDate.value, 1);
@@ -433,8 +419,6 @@ const prevMonth = () => {
 };
 
 const nextMonth = () => {
-  if (!selectedDate.value) return;
-  
   selectedDate.value = isHijri.value
     ? moment(selectedDate.value).add(1, "iMonth").toDate()
     : addMonths(selectedDate.value, 1);
@@ -442,14 +426,10 @@ const nextMonth = () => {
 };
 
 const selectYear = (year) => {
-  if (!selectedDate.value) return;
-  
   if (isHijri.value) {
     selectedDate.value = moment(selectedDate.value).iYear(year).toDate();
   } else {
-    const newDate = new Date(selectedDate.value);
-    newDate.setFullYear(year);
-    selectedDate.value = newDate;
+    selectedDate.value.setFullYear(year);
   }
   isYearSelection.value = false;
   isMonthSelection.value = true;
@@ -457,17 +437,13 @@ const selectYear = (year) => {
 };
 
 const selectMonth = (monthIndex) => {
-  if (!selectedDate.value) return;
-  
   if (isHijri.value) {
     selectedDate.value = moment(selectedDate.value)
       .iMonth(monthIndex)
       .startOf("iMonth")
       .toDate();
   } else {
-    const newDate = new Date(selectedDate.value);
-    newDate.setMonth(monthIndex);
-    selectedDate.value = newDate;
+    selectedDate.value.setMonth(monthIndex);
   }
   isMonthSelection.value = false;
   updateDate();
@@ -491,47 +467,27 @@ const hideTimeArea = () => {
 };
 
 const incrementHours = () => {
-  if (!selectedDate.value) return;
-  
   var hour = (selectedHour.value + 1) % 24;
   selectedHour.value = hour;
-  
-  const newDate = new Date(selectedDate.value);
-  newDate.setHours(hour);
-  selectedDate.value = newDate;
+  selectedDate.value.setHours(hour);
 };
 
 const decrementHours = () => {
-  if (!selectedDate.value) return;
-  
   var hour = (selectedHour.value - 1 + 24) % 24;
   selectedHour.value = hour;
-  
-  const newDate = new Date(selectedDate.value);
-  newDate.setHours(hour);
-  selectedDate.value = newDate;
+  selectedDate.value.setHours(hour);
 };
 
 const incrementMinutes = () => {
-  if (!selectedDate.value) return;
-  
   var minute = (selectedMinute.value + 1) % 60;
   selectedMinute.value = minute;
-  
-  const newDate = new Date(selectedDate.value);
-  newDate.setMinutes(minute);
-  selectedDate.value = newDate;
+  selectedDate.value.setMinutes(minute);
 };
 
 const decrementMinutes = () => {
-  if (!selectedDate.value) return;
-  
   var minute = (selectedMinute.value - 1 + 60) % 60;
   selectedMinute.value = minute;
-  
-  const newDate = new Date(selectedDate.value);
-  newDate.setMinutes(minute);
-  selectedDate.value = newDate;
+  selectedDate.value.setMinutes(minute);
 };
 
 const switchCalendar = () => {
@@ -551,8 +507,7 @@ const switchCalendar = () => {
 };
 
 const isSelected = (date) => {
-  if (!date || !selectedDate.value) return false;
-  return date.toDateString() === selectedDate.value.toDateString();
+  return date && date.toDateString() === selectedDate.value.toDateString();
 };
 
 // Updated formattedDate computed property with better format handling
@@ -576,14 +531,12 @@ const formattedDate = computed(() => {
   
   // Set time components if enabled
   if (props.withTime && selectedDate.value) {
-    const newDate = new Date(selectedDate.value);
-    newDate.setHours(
+    selectedDate.value.setHours(
       selectedHour.value,
       selectedMinute.value,
       selectedSecond.value,
       0
     );
-    selectedDate.value = newDate;
   }
   
   // Format the date using the appropriate method
@@ -611,8 +564,6 @@ const formattedDate = computed(() => {
 
 // Updated confirmSelection with better format handling
 const confirmSelection = async () => {
-  if (!selectedDate.value) return;
-  
   const finalDate = new Date(selectedDate.value);
   if (props.withTime) {
     finalDate.setHours(selectedHour.value, selectedMinute.value, selectedSecond.value, 0);
@@ -670,7 +621,6 @@ const confirmSelection = async () => {
 const cancelSelection = () => {
   emit("cancel");
   showPicker.value = false;
-  document.removeEventListener('click', handleClickOutside);
 };
 
 const toggleYearSelection = () => {
@@ -692,9 +642,8 @@ const nextYearsOrMonths = () => {
 };
 
 const updateDate = () => {
-  if (selectedDate.value) {
-    selectedDate.value = new Date(selectedDate.value);
-  }
+  selectedDate.value = new Date(selectedDate.value);
+  calculateDaysInMonth();
 };
 
 const updateVisibleYears = () => {
@@ -702,6 +651,34 @@ const updateVisibleYears = () => {
     { length: 10 },
     (_, i) => yearRangeStart.value + i
   );
+};
+
+const calculateDaysInMonth = () => {
+  const days = [];
+  const startOfMonth = isHijri.value
+    ? moment(selectedDate.value).startOf("iMonth")
+    : moment(selectedDate.value).startOf("month");
+
+  const startDay = isHijri.value
+    ? startOfMonth.isoWeekday() % 7
+    : startOfMonth.day();
+
+  for (let i = 0; i < startDay; i++) {
+    days.push({ day: "", date: null });
+  }
+
+  const totalDays = isHijri.value
+    ? moment(selectedDate.value).iDaysInMonth()
+    : moment(selectedDate.value).daysInMonth();
+
+  for (let day = 1; day <= totalDays; day++) {
+    const date = isHijri.value
+      ? moment(startOfMonth).iDate(day).toDate()
+      : moment(startOfMonth).date(day).toDate();
+    days.push({ day, date });
+  }
+
+  daysInMonth.value = days;
 };
 
 const handleClickOutside = (event) => {
@@ -724,16 +701,12 @@ const openDatePicker = () => {
 };
 
 onMounted(() => {
-  // Set calendar type first
-  isHijri.value = props.initialType === "hijri" || (props.modelValue && props.modelValue.type === "hijri");
-  
-  // Set appropriate year range based on calendar type
-  yearRangeStart.value = isHijri.value ? 1400 : 2000;
-  
   if (props.modelValue && props.modelValue.date) {
+    // Set calendar type
+    isHijri.value = props.modelValue.type === "hijri";
+    
     // Parse the input date based on the calendar type
-    const calendarType = props.modelValue.type || props.initialType;
-    selectedDate.value = parseInputDate(props.modelValue.date, calendarType);
+    selectedDate.value = parseInputDate(props.modelValue.date, props.modelValue.type);
     
     // Extract time components
     selectedHour.value = selectedDate.value.getHours();
@@ -758,3 +731,4 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside);
 });
 </script>
+

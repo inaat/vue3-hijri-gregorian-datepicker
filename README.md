@@ -30,7 +30,7 @@ Here is a basic example of how to use the vue3-hijri-gregorian-datepicker in you
       :withTime="true" 
       v-model="selectedDate" 
       :language="'en'" 
-       format="dd-mm-yyyy HH:mm"
+    
       :darkTheme="false"
     />
     />

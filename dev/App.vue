@@ -1,60 +1,126 @@
 <template>
   <div id="app">
+    <!-- Controls -->
+    <div class="controls">
+      <label>
+        <input type="checkbox" v-model="darkTheme" /> Dark Theme
+      </label>
+      <label>
+        <input type="checkbox" v-model="disabled" /> Disabled
+      </label>
+      <label>
+        <input type="checkbox" v-model="withTime" /> With Time
+      </label>
+      <label>
+        <input type="checkbox" v-model="readOnly" /> Read Only
+      </label>
+      <label>
+        Initial Type:
+        <select v-model="initialType">
+          <option value="gregorian">Gregorian</option>
+          <option value="hijri">Hijri</option>
+        </select>
+      </label>
+      <label>
+        Language:
+        <select v-model="language">
+          <option value="en">English</option>
+          <option value="ar">Arabic</option>
+        </select>
+      </label>
+      <label>
+        Predefined Formats:
+        <select v-model="selectedFormat">
+          <option v-for="format in availableFormats" :key="format" :value="format">
+            {{ format }}
+          </option>
+        </select>
+      </label>
+      <label>
+        Custom Format:
+        <input
+          type="text"
+          v-model="customFormat"
+          placeholder="Enter custom format (optional)"
+        />
+      </label>
+    </div>
+    
     <DatePicker 
-      :initialType="calendarType" 
-      :withTime="true" 
+      :initialType="initialType" 
+      :withTime="withTime" 
       v-model="selectedDate" 
-      :language="'en'" 
-      :darkTheme="true"
+      cal
+      :language="language" 
+      :darkTheme="darkTheme"
+      :disabled="disabled"
+      :readOnly="readOnly"
+      :format="actualFormat"
     />
-    <!-- :format="'yyyy-MM-dd HH:mm:ss '" -->
-    <!-- Display the selected date and type     format="dd-mm-yyyy HH:mm" -->
+    
+    <!-- Display the selected date and type -->
     <p>Selected Date: {{ selectedDate.date }}</p>
     <p>Calendar Type: {{ selectedDate.type }}</p>
   </div>
-</template>
+</template><script setup>
+import { ref, computed, watch } from 'vue';
+import DatePicker from '../src/components/DatePicker.vue';
 
+// Reactive state
+const darkTheme = ref(false);
+const disabled = ref(false);
+const withTime = ref(false);
+const readOnly = ref(false);
+const initialType = ref('hijri'); // Default to Hijri
+const language = ref('en');
+const customFormat = ref('');
+const selectedFormat = ref('');
+const selectedDate = ref({
+  date: new Date().toISOString().split('T')[0],//'28-10-1446
+  type: initialType.value
+});
 
-<script>
- import DatePicker from '../src/components/DatePicker.vue';
- // import NewDatePicker from './components/NewDatePicker.vue';
+// Watch initialType and update selectedDate
+watch(initialType, (newType) => {
+  selectedDate.value = {
+    ...selectedDate.value,
+    type: newType
+  };
+});
 
- export default {
-  components: {
-    DatePicker,
-  },
-  data() {
-    return {
+// Format options
+const gregorianFormats = [
+ 
+  'yyyy-MM-dd',
+  'MM/dd/yyyy',
+  'dd-MM-yyyy',
+  'dd/MM/yyyy',
+  'yyyy-MM-dd HH:mm:ss',
+  'MM/dd/yyyy HH:mm:ss',
+  'dd-MM-yyyy HH:mm:ss',
+  'dd/MM/yyyy HH:mm:ss',
+];
 
-      calendarType: 'gregorian',
-      selectedDate: {
-        date: this.getCurrentDateTime(),
-        type: 'gregorian',
-      },
-    };
-  },
-  methods: {
-    getCurrentDateTime() {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      
-      // Format: YYYY-MM-DDTHH:mm:ss
-      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-    }
-  },
-  watch: {
-    selectedDate: {
-      handler(newValue) {
-        // Whenever selectedDate changes, you can handle it here
-        console.log('Updated selectedDate:', newValue);
-      },
-      deep: true, // To detect changes in the nested object (date, type)
-    },
-  },
-};
+const hijriFormats = [
+  'iYYYY-iMM-iDD',
+  'iDD-iMM-iYYYY',
+  'iYYYY/iMM/iDD',
+  'iDD/iMM/iYYYY',
+  'iYYYY-iMM-iDD HH:mm:ss',
+  'iDD-iMM-iYYYY HH:mm:ss',
+  'iYYYY/iMM/iDD HH:mm:ss',
+  'iDD/iMM/iYYYY HH:mm:ss',
+];
+
+const availableFormats = computed(() => 
+  initialType.value === 'hijri' ? hijriFormats : gregorianFormats
+);
+
+const actualFormat = computed(() => 
+  customFormat.value || selectedFormat.value || ''
+);
+
+watch(selectedFormat, (newFormat) => {
+  if (newFormat) customFormat.value = newFormat;
+});
 </script>

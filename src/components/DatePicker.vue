@@ -216,14 +216,65 @@ const yearRangeStart = ref(isHijri.value ? 1400 : 2000);
 const formattedHour = computed(() => pad(selectedHour.value));
 const formattedMinute = computed(() => pad(selectedMinute.value));
 
-// Improved helper function to parse dates consistently
+// The issue is in the formattedDate computed property and date parsing logic
+// Here are the key fixes needed:
+
+// 1. Fix the formattedDate computed property
+const formattedDate = computed(() => {
+  if (!props.modelValue.date) return '';
+  if (!selectedDate.value) return '';
+  
+  // Determine the output format based on calendar type and time inclusion
+  let formatString;
+  
+  if (props.format) {
+    // Use custom format if provided
+    formatString = props.format;
+  } else {
+    // Use defaults based on calendar type and time setting
+    if (isHijri.value) {
+      formatString = props.withTime ? "iDD-iMM-iYYYY HH:mm:ss" : "iDD-iMM-iYYYY";
+    } else {
+      // FIXED: Use consistent DD-MM-YYYY format for Gregorian dates
+      formatString = props.withTime ? "DD-MM-YYYY HH:mm:ss" : "DD-MM-YYYY";
+    }
+  }
+  
+  // Set time components if enabled
+  if (props.withTime && selectedDate.value) {
+    const newDate = new Date(selectedDate.value);
+    newDate.setHours(
+      selectedHour.value,
+      selectedMinute.value,
+      selectedSecond.value,
+      0
+    );
+    selectedDate.value = newDate;
+  }
+  
+  // Format the date using the appropriate method
+  try {
+    if (isHijri.value) {
+      return moment(selectedDate.value).format(formatString);
+    } else {
+      // For Gregorian dates, use moment to ensure consistent formatting
+      console.log("Formatting Gregorian date:", selectedDate.value,formatString);
+      console.log("Using format string:", moment(selectedDate.value).format(formatString));
+      return moment(selectedDate.value).format(formatString);
+    }
+  } catch (e) {
+    console.error("Error formatting date:", e);
+    return selectedDate.value ? selectedDate.value.toLocaleDateString() : '';
+  }
+});
+
+// 2. Fix the parseInputDate function to handle DD-MM-YYYY format correctly
 const parseInputDate = (dateString, calendarType) => {
   if (!dateString) return new Date();
   
   try {
     if (calendarType === "hijri") {
       // Handle Hijri date parsing
-      // First try direct format that matches our expected input
       const parsed = moment(dateString, "iDD-iMM-iYYYY");
       if (parsed.isValid()) {
         return parsed.toDate();
@@ -236,22 +287,15 @@ const parseInputDate = (dateString, calendarType) => {
         if (parsed.isValid()) return parsed.toDate();
       }
       
-      // If no format matches, fallback to current date
       console.warn("Invalid Hijri date format, using current date");
       return moment().toDate();
     } else {
-      // For Gregorian calendar
-      const date = new Date(dateString);
-      if (!isNaN(date)) return date;
-      
-      // Try parsing with common formats
-      const formats = ["yyyy-MM-dd", "MM/dd/yyyy", "dd-MM-yyyy", "dd/MM/yyyy"];
+      // FIXED: For Gregorian calendar, parse DD-MM-YYYY format first
+      const formats = ["DD-MM-YYYY", "YYYY-MM-DD", "MM/DD/YYYY", "DD/MM/YYYY"];
       for (const fmt of formats) {
-        try {
-          const parsed = parse(dateString, fmt, new Date());
-          if (!isNaN(parsed)) return parsed;
-        } catch (e) {
-          // Continue to next format
+        const parsed = moment(dateString, fmt, true); // strict parsing
+        if (parsed.isValid()) {
+          return parsed.toDate();
         }
       }
       
@@ -265,6 +309,49 @@ const parseInputDate = (dateString, calendarType) => {
   }
 };
 
+// 3. Fix the confirmSelection function
+const confirmSelection = async () => {
+  if (!selectedDate.value) return;
+  
+  const finalDate = new Date(selectedDate.value);
+  if (props.withTime) {
+    finalDate.setHours(selectedHour.value, selectedMinute.value, selectedSecond.value, 0);
+  } else {
+    finalDate.setHours(0, 0, 0, 0);
+  }
+  
+  const calendarType = isHijri.value ? "hijri" : "gregorian";
+  
+  // Determine output format - FIXED to use consistent DD-MM-YYYY
+  let outputFormat;
+  if (props.format) {
+    outputFormat = props.format;
+  } else {
+    if (calendarType === "hijri") {
+      outputFormat = props.withTime ? "iDD-iMM-iYYYY HH:mm:ss" : "iDD-iMM-iYYYY";
+    } else {
+      // FIXED: Use DD-MM-YYYY format consistently
+      outputFormat = props.withTime ? "DD-MM-YYYY HH:mm:ss" : "DD-MM-YYYY";
+    }
+  }
+  
+  // Format the date using moment for consistency
+  let formattedDateStr;
+  try {
+    formattedDateStr = moment(finalDate).format(outputFormat);
+  } catch (e) {
+    console.error("Error formatting output date:", e);
+    formattedDateStr = finalDate.toISOString().split('T')[0];
+  }
+  
+  emit("update:modelValue", {
+    date: formattedDateStr,
+    type: calendarType,
+  });
+  
+  showPicker.value = false;
+  document.removeEventListener('click', handleClickOutside);
+};
 const translations = computed(() => {
   return props.language === "ar"
     ? {
@@ -555,117 +642,7 @@ const isSelected = (date) => {
   return date.toDateString() === selectedDate.value.toDateString();
 };
 
-// Updated formattedDate computed property with better format handling
-const formattedDate = computed(() => {
-  if (!selectedDate.value) return '';
-  
-  // Determine the output format based on calendar type and time inclusion
-  let formatString;
-  
-  if (props.format) {
-    // Use custom format if provided
-    formatString = props.format;
-  } else {
-    // Use defaults based on calendar type and time setting
-    if (isHijri.value) {
-      formatString = props.withTime ? "iDD-iMM-iYYYY HH:mm:ss" : "iDD-iMM-iYYYY";
-    } else {
-      formatString = props.withTime ? "dd-MM-yyyy HH:mm:ss" : "dd-MM-yyyy";
-    }
-  }
-  
-  // Set time components if enabled
-  if (props.withTime && selectedDate.value) {
-    const newDate = new Date(selectedDate.value);
-    newDate.setHours(
-      selectedHour.value,
-      selectedMinute.value,
-      selectedSecond.value,
-      0
-    );
-    selectedDate.value = newDate;
-  }
-  
-  // Format the date using the appropriate method
-  try {
-    if (isHijri.value) {
-      return moment(selectedDate.value).format(formatString);
-    } else {
-      // Check if format string contains Hijri tokens - if so, fallback to moment
-      if (formatString.includes('i')) {
-        return moment(selectedDate.value).format(formatString);
-      }
-      
-      try {
-        return format(selectedDate.value, formatString);
-      } catch (e) {
-        // If date-fns fails, fallback to moment
-        return moment(selectedDate.value).format(formatString);
-      }
-    }
-  } catch (e) {
-    console.error("Error formatting date:", e);
-    return selectedDate.value ? selectedDate.value.toLocaleDateString() : '';
-  }
-});
 
-// Updated confirmSelection with better format handling
-const confirmSelection = async () => {
-  if (!selectedDate.value) return;
-  
-  const finalDate = new Date(selectedDate.value);
-  if (props.withTime) {
-    finalDate.setHours(selectedHour.value, selectedMinute.value, selectedSecond.value, 0);
-  } else {
-    finalDate.setHours(0, 0, 0, 0);
-  }
-  
-  const calendarType = isHijri.value ? "hijri" : "gregorian";
-  
-  // Determine output format
-  let outputFormat;
-  if (props.format) {
-    outputFormat = props.format;
-  } else {
-    if (calendarType === "hijri") {
-      outputFormat = props.withTime ? "iDD-iMM-iYYYY HH:mm:ss" : "iDD-iMM-iYYYY";
-    } else {
-      outputFormat = props.withTime ? "dd-MM-yyyy HH:mm:ss" : "dd-MM-yyyy";
-    }
-  }
-  
-  // Format the date
-  let formattedDateStr;
-  try {
-    if (calendarType === "hijri") {
-      formattedDateStr = moment(finalDate).format(outputFormat);
-    } else {
-      // Try with date-fns first for Gregorian dates
-      if (outputFormat.includes('i')) {
-        // If the format includes Hijri tokens, use moment
-        formattedDateStr = moment(finalDate).format(outputFormat);
-      } else {
-        try {
-          formattedDateStr = format(finalDate, outputFormat);
-        } catch (e) {
-          // Fallback to moment if date-fns fails
-          formattedDateStr = moment(finalDate).format(outputFormat);
-        }
-      }
-    }
-  } catch (e) {
-    console.error("Error formatting output date:", e);
-    formattedDateStr = finalDate.toISOString().split('T')[0];
-  }
-  
-  emit("update:modelValue", {
-    date: formattedDateStr,
-    type: calendarType,
-  });
-  
-  showPicker.value = false;
-  document.removeEventListener('click', handleClickOutside);
-};
 
 const cancelSelection = () => {
   emit("cancel");
@@ -757,4 +734,35 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside);
 });
+
+
+function normalizeDateFormat(dateString) {
+  if (!dateString) {
+    console.error("No date string provided!");
+    return dateString;
+  }
+
+  console.log("Trying to parse:", dateString);  // Debugging: check the input date string
+
+  // Try to parse the input as a Hijri date
+  const hDate = moment(dateString, ['iYYYY-iMM-iDD', 'iDD-iMM-iYYYY', 'iYYYY/iMM/iDD', 'iDD/iMM/iYYYY', 'iYYYY iMM iDD'], true);
+  console.log("Hijri parsing result:", hDate);  // Debugging: check if it's a valid Hijri date
+  // Debugging: check the formatted Hijri date
+  // If it's a valid Hijri date, return that it's a Hijri date
+  if (hDate && hDate.isValid()) {
+
+    console.log("The date is a valid Hijri date:", hDate.format('YYYY-MM-DD'));
+    return  hDate.format('YYYY-MM-DD');
+  }
+  // Now try parsing it as a Gregorian date
+  const gDate = moment(dateString, ['YYYY-MM-DD', 'DD-MM-YYYY', 'MM-DD-YYYY'], true);
+  console.log("Gregorian parsing result:", gDate);  // Debugging: check if it's a valid Gregorian date
+
+  // If it's a valid Gregorian date, return that it's a Gregorian date
+  if (gDate && gDate.isValid()) {
+    console.log("The date is a valid Gregorian date:", gDate.format('YYYY-MM-DD'));
+    return gDate.format('YYYY-MM-DD');
+  }
+   return  dateString ;
+}
 </script>

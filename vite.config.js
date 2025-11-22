@@ -13,11 +13,12 @@ export default defineConfig({
       fileName: (format) => `vue3-hijri-gregorian-datepicker.${format}.js`
     },
     rollupOptions: {
-      // Externalize dependencies that shouldn’t be bundled
-      external: ['vue', 'moment-hijri', 'date-fns'],
+      // Externalize dependencies that shouldn't be bundled
+      external: ['vue', 'moment', 'moment-hijri', 'date-fns'],
       output: {
         globals: {
           vue: 'Vue',
+          moment: 'moment',
           'moment-hijri': 'moment',
           'date-fns': 'dateFns'
         }

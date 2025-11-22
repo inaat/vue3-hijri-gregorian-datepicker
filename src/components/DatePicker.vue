@@ -30,7 +30,7 @@
             <!-- Year Selection -->
             <transition name="fade">
               <div v-if="isYearSelection" class="year-selection">
-                <div v-for="year in visibleYears" :key="year" :class="{ selected: year === currentYear }"
+                <div v-for="year in visibleYears" :key="year" :class="{ selected: year === currentYearNumber }"
                   @click="selectYear(year)">
                   {{ year }}
                 </div>
@@ -40,7 +40,7 @@
             <!-- Month Selection -->
             <transition name="fade">
               <div v-if="isMonthSelection" class="month-selection">
-                <div v-for="(month, index) in months" :key="month" :class="{ selected: index + 1 === currentMonth }"
+                <div v-for="(month, index) in months" :key="month" :class="{ selected: index === currentMonthIndex }"
                   @click="selectMonth(index)">
                   {{ month }}
                 </div>
@@ -145,7 +145,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
 import moment from "moment-hijri";
-import { format, addMonths, subMonths, parse } from "date-fns";
+import { addMonths, subMonths } from "date-fns";
 import DatePickerButton from "./common/DatePickerButton.vue";
 import CalendarIcon from './common/CalendarIcon.vue';
 import ClockIcon from './common/ClockIcon.vue';
@@ -216,17 +216,13 @@ const yearRangeStart = ref(isHijri.value ? 1400 : 2000);
 const formattedHour = computed(() => pad(selectedHour.value));
 const formattedMinute = computed(() => pad(selectedMinute.value));
 
-// The issue is in the formattedDate computed property and date parsing logic
-// Here are the key fixes needed:
-
-// 1. Fix the formattedDate computed property
 const formattedDate = computed(() => {
   if (!props.modelValue.date) return '';
   if (!selectedDate.value) return '';
-  
+
   // Determine the output format based on calendar type and time inclusion
   let formatString;
-  
+
   if (props.format) {
     // Use custom format if provided
     formatString = props.format;
@@ -235,40 +231,31 @@ const formattedDate = computed(() => {
     if (isHijri.value) {
       formatString = props.withTime ? "iDD-iMM-iYYYY HH:mm:ss" : "iDD-iMM-iYYYY";
     } else {
-      // FIXED: Use consistent DD-MM-YYYY format for Gregorian dates
       formatString = props.withTime ? "DD-MM-YYYY HH:mm:ss" : "DD-MM-YYYY";
     }
   }
-  
-  // Set time components if enabled
+
+  // Create a temporary date object with time components if enabled
+  let dateToFormat = selectedDate.value;
   if (props.withTime && selectedDate.value) {
-    const newDate = new Date(selectedDate.value);
-    newDate.setHours(
+    dateToFormat = new Date(selectedDate.value);
+    dateToFormat.setHours(
       selectedHour.value,
       selectedMinute.value,
       selectedSecond.value,
       0
     );
-    selectedDate.value = newDate;
   }
-  
+
   // Format the date using the appropriate method
   try {
-    if (isHijri.value) {
-      return moment(selectedDate.value).format(formatString);
-    } else {
-      // For Gregorian dates, use moment to ensure consistent formatting
-      console.log("Formatting Gregorian date:", selectedDate.value,formatString);
-      console.log("Using format string:", moment(selectedDate.value).format(formatString));
-      return moment(selectedDate.value).format(formatString);
-    }
+    return moment(dateToFormat).format(formatString);
   } catch (e) {
     console.error("Error formatting date:", e);
-    return selectedDate.value ? selectedDate.value.toLocaleDateString() : '';
+    return dateToFormat ? dateToFormat.toLocaleDateString() : '';
   }
 });
 
-// 2. Fix the parseInputDate function to handle DD-MM-YYYY format correctly
 const parseInputDate = (dateString, calendarType) => {
   if (!dateString) return new Date();
   
@@ -290,7 +277,7 @@ const parseInputDate = (dateString, calendarType) => {
       console.warn("Invalid Hijri date format, using current date");
       return moment().toDate();
     } else {
-      // FIXED: For Gregorian calendar, parse DD-MM-YYYY format first
+      // For Gregorian calendar, parse DD-MM-YYYY format first
       const formats = ["DD-MM-YYYY", "YYYY-MM-DD", "MM/DD/YYYY", "DD/MM/YYYY"];
       for (const fmt of formats) {
         const parsed = moment(dateString, fmt, true); // strict parsing
@@ -309,7 +296,6 @@ const parseInputDate = (dateString, calendarType) => {
   }
 };
 
-// 3. Fix the confirmSelection function
 const confirmSelection = async () => {
   if (!selectedDate.value) return;
   
@@ -330,7 +316,6 @@ const confirmSelection = async () => {
     if (calendarType === "hijri") {
       outputFormat = props.withTime ? "iDD-iMM-iYYYY HH:mm:ss" : "iDD-iMM-iYYYY";
     } else {
-      // FIXED: Use DD-MM-YYYY format consistently
       outputFormat = props.withTime ? "DD-MM-YYYY HH:mm:ss" : "DD-MM-YYYY";
     }
   }
@@ -442,18 +427,34 @@ const translations = computed(() => {
 
 const currentMonth = computed(() => {
   if (!selectedDate.value) return '';
-  
+
   return isHijri.value
     ? translations.value.monthsHijri[moment(selectedDate.value).iMonth()]
     : translations.value.monthsGregorian[selectedDate.value.getMonth()];
 });
 
+const currentMonthIndex = computed(() => {
+  if (!selectedDate.value) return -1;
+
+  return isHijri.value
+    ? moment(selectedDate.value).iMonth()
+    : selectedDate.value.getMonth();
+});
+
 const currentYear = computed(() => {
   if (!selectedDate.value) return '';
-  
+
   return isHijri.value
     ? moment(selectedDate.value).format("iYYYY")
-    : moment(selectedDate.value).format("yyyy");
+    : moment(selectedDate.value).format("YYYY");
+});
+
+const currentYearNumber = computed(() => {
+  if (!selectedDate.value) return -1;
+
+  return isHijri.value
+    ? parseInt(moment(selectedDate.value).format("iYYYY"))
+    : selectedDate.value.getFullYear();
 });
 
 const visibleYears = ref([]);
@@ -481,10 +482,8 @@ const daysInMonth = computed(() => {
     );
 
   const startDay = isHijri.value
-    ? startOfMonth.isoWeekday() % 7
-    : startOfMonth.getDay() === 0
-      ? 7
-      : startOfMonth.getDay();
+    ? (startOfMonth.isoWeekday() - 1)
+    : (startOfMonth.getDay() + 6) % 7;
 
   for (let i = 0; i < startDay; i++) {
     days.push({ day: "", date: null });
@@ -563,9 +562,9 @@ const selectMonth = (monthIndex) => {
 const selectDate = (date) => {
   if (date) {
     selectedDate.value = date;
-    //if (!props.withTime) {
+    if (!props.withTime) {
       confirmSelection();
-   // }
+    }
   }
 };
 
@@ -625,15 +624,19 @@ const switchCalendar = () => {
   isHijri.value = !isHijri.value;
   const calendarType = isHijri.value ? "hijri" : "gregorian";
 
-  // Update year range start based on calendar type
-  yearRangeStart.value = isHijri.value ? 1400 : 2000;
-  
+  // Update year range start based on the current selected date
+  const currentYear = isHijri.value
+    ? parseInt(moment(selectedDate.value).format("iYYYY"))
+    : selectedDate.value.getFullYear();
+
+  yearRangeStart.value = Math.floor(currentYear / 10) * 10;
+
   // Emit the current formatted date with the new calendar type
   emit("update:modelValue", {
     date: formattedDate.value,
     type: calendarType,
   });
-  
+
   updateVisibleYears();
 };
 
@@ -703,15 +706,12 @@ const openDatePicker = () => {
 onMounted(() => {
   // Set calendar type first
   isHijri.value = props.initialType === "hijri" || (props.modelValue && props.modelValue.type === "hijri");
-  
-  // Set appropriate year range based on calendar type
-  yearRangeStart.value = isHijri.value ? 1400 : 2000;
-  
+
   if (props.modelValue && props.modelValue.date) {
     // Parse the input date based on the calendar type
     const calendarType = props.modelValue.type || props.initialType;
     selectedDate.value = parseInputDate(props.modelValue.date, calendarType);
-    
+
     // Extract time components
     selectedHour.value = selectedDate.value.getHours();
     selectedMinute.value = selectedDate.value.getMinutes();
@@ -721,12 +721,20 @@ onMounted(() => {
     selectedDate.value = isHijri.value
       ? moment().startOf("day").toDate()  // Hijri default
       : new Date();                        // Gregorian default
-      
+
     selectedHour.value = selectedDate.value.getHours();
     selectedMinute.value = selectedDate.value.getMinutes();
     selectedSecond.value = selectedDate.value.getSeconds();
   }
-  
+
+  // Set year range based on the selected date to show current year
+  const currentYear = isHijri.value
+    ? parseInt(moment(selectedDate.value).format("iYYYY"))
+    : selectedDate.value.getFullYear();
+
+  // Center the year range around the current year (show current year in middle)
+  yearRangeStart.value = Math.floor(currentYear / 10) * 10;
+
   // Update visible years in the calendar
   updateVisibleYears();
 });
@@ -734,35 +742,4 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside);
 });
-
-
-function normalizeDateFormat(dateString) {
-  if (!dateString) {
-    console.error("No date string provided!");
-    return dateString;
-  }
-
-  console.log("Trying to parse:", dateString);  // Debugging: check the input date string
-
-  // Try to parse the input as a Hijri date
-  const hDate = moment(dateString, ['iYYYY-iMM-iDD', 'iDD-iMM-iYYYY', 'iYYYY/iMM/iDD', 'iDD/iMM/iYYYY', 'iYYYY iMM iDD'], true);
-  console.log("Hijri parsing result:", hDate);  // Debugging: check if it's a valid Hijri date
-  // Debugging: check the formatted Hijri date
-  // If it's a valid Hijri date, return that it's a Hijri date
-  if (hDate && hDate.isValid()) {
-
-    console.log("The date is a valid Hijri date:", hDate.format('YYYY-MM-DD'));
-    return  hDate.format('YYYY-MM-DD');
-  }
-  // Now try parsing it as a Gregorian date
-  const gDate = moment(dateString, ['YYYY-MM-DD', 'DD-MM-YYYY', 'MM-DD-YYYY'], true);
-  console.log("Gregorian parsing result:", gDate);  // Debugging: check if it's a valid Gregorian date
-
-  // If it's a valid Gregorian date, return that it's a Gregorian date
-  if (gDate && gDate.isValid()) {
-    console.log("The date is a valid Gregorian date:", gDate.format('YYYY-MM-DD'));
-    return gDate.format('YYYY-MM-DD');
-  }
-   return  dateString ;
-}
 </script>

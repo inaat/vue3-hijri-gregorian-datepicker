@@ -1,27 +1,174 @@
+# Vue3 Hijri Gregorian DatePicker
 
-# vue3-hijri-gregorian-datepicker
+A comprehensive Vue 3 date picker component that seamlessly supports both Hijri (Islamic) and Gregorian calendars with the ability to switch between them on-the-fly.
 
-vue3-hijri-gregorian-datepicker is a Vue 3 date picker component that supports both Hijri (Islamic) and Gregorian calendars. The component allows users to select a date and time, and provides options to switch between the two calendar systems.
+[![npm version](https://img.shields.io/npm/v/vue3-hijri-gregorian-datepicker.svg)](https://www.npmjs.com/package/vue3-hijri-gregorian-datepicker)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
 
-- Hijri (Islamic) and Gregorian calendar support
-- Time selection (hours, minutes, seconds)
-- Easy to switch between Hijri and Gregorian calendars
-- Configurable in English and Arabic languages
-- Customizable date and time formatting
+✨ **Dual Calendar Support**: Switch seamlessly between Hijri (Islamic) and Gregorian calendars
+
+⏰ **Time Selection**: Optional time picker with hours, minutes, and seconds
+
+🌍 **Internationalization**: Built-in support for English and Arabic languages
+
+🎨 **Theming**: Light and dark theme support
+
+📅 **Flexible Formatting**: Customizable date and time format strings
+
+♿ **Accessibility**: Keyboard navigation and screen reader support
+
+🎯 **Vue 3 Ready**: Built with Vue 3 Composition API
+
+📱 **Responsive**: Works great on mobile and desktop
 
 ## Installation
-
-To install vue3-hijri-gregorian-datepicker, you can use npm:
 
 ```bash
 npm install vue3-hijri-gregorian-datepicker
 ```
 
-## Usage
+## Quick Start
 
-Here is a basic example of how to use the vue3-hijri-gregorian-datepicker in your Vue 3 project:
+```vue
+<template>
+  <div>
+    <DatePicker v-model="selectedDate" />
+    <p>Selected Date: {{ selectedDate.date }}</p>
+    <p>Calendar Type: {{ selectedDate.type }}</p>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import DatePicker from 'vue3-hijri-gregorian-datepicker';
+import 'vue3-hijri-gregorian-datepicker/dist/style.css';
+
+const selectedDate = ref({
+  date: '22-11-2025',
+  type: 'gregorian'
+});
+</script>
+```
+
+## Usage Examples
+
+### Basic Gregorian Calendar
+
+```vue
+<template>
+  <DatePicker
+    v-model="selectedDate"
+    initialType="gregorian"
+    language="en"
+  />
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import DatePicker from 'vue3-hijri-gregorian-datepicker';
+import 'vue3-hijri-gregorian-datepicker/dist/style.css';
+
+const selectedDate = ref({
+  date: '',
+  type: 'gregorian'
+});
+</script>
+```
+
+### Hijri Calendar with Arabic Language
+
+```vue
+<template>
+  <DatePicker
+    v-model="selectedDate"
+    initialType="hijri"
+    language="ar"
+  />
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import DatePicker from 'vue3-hijri-gregorian-datepicker';
+import 'vue3-hijri-gregorian-datepicker/dist/style.css';
+
+const selectedDate = ref({
+  date: '',
+  type: 'hijri'
+});
+</script>
+```
+
+### With Time Picker
+
+```vue
+<template>
+  <DatePicker
+    v-model="selectedDate"
+    :withTime="true"
+    initialType="gregorian"
+  />
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import DatePicker from 'vue3-hijri-gregorian-datepicker';
+import 'vue3-hijri-gregorian-datepicker/dist/style.css';
+
+const selectedDate = ref({
+  date: '',
+  type: 'gregorian'
+});
+</script>
+```
+
+### Dark Theme
+
+```vue
+<template>
+  <DatePicker
+    v-model="selectedDate"
+    :darkTheme="true"
+  />
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import DatePicker from 'vue3-hijri-gregorian-datepicker';
+import 'vue3-hijri-gregorian-datepicker/dist/style.css';
+
+const selectedDate = ref({
+  date: '',
+  type: 'gregorian'
+});
+</script>
+```
+
+### Custom Date Format
+
+```vue
+<template>
+  <DatePicker
+    v-model="selectedDate"
+    format="DD/MM/YYYY"
+    initialType="gregorian"
+  />
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import DatePicker from 'vue3-hijri-gregorian-datepicker';
+import 'vue3-hijri-gregorian-datepicker/dist/style.css';
+
+const selectedDate = ref({
+  date: '',
+  type: 'gregorian'
+});
+</script>
+```
+
+### Complete Example with All Options
 
 ```vue
 <template>
@@ -54,55 +201,45 @@ Here is a basic example of how to use the vue3-hijri-gregorian-datepicker in you
           <option value="ar">Arabic</option>
         </select>
       </label>
-      <label>
-        Predefined Formats:
-        <select v-model="selectedFormat">
-          <option v-for="format in availableFormats" :key="format" :value="format">
-            {{ format }}
-          </option>
-        </select>
-      </label>
-      <label>
-        Custom Format:
-        <input
-          type="text"
-          v-model="customFormat"
-          placeholder="Enter custom format (optional)"
-        />
-      </label>
     </div>
-    
-    <DatePicker 
-      :initialType="initialType" 
-      :withTime="withTime" 
-      v-model="selectedDate" 
-      cal
-      :language="language" 
+
+    <DatePicker
+      :initialType="initialType"
+      :withTime="withTime"
+      v-model="selectedDate"
+      :language="language"
       :darkTheme="darkTheme"
       :disabled="disabled"
       :readOnly="readOnly"
-      :format="actualFormat"
+      :format="customFormat"
+      placeholder="Select a date"
+      @cancel="onCancel"
     />
-    
+
     <!-- Display the selected date and type -->
-    <p>Selected Date: {{ selectedDate.date }}</p>
-    <p>Calendar Type: {{ selectedDate.type }}</p>
+    <div class="output">
+      <p>Selected Date: {{ selectedDate.date }}</p>
+      <p>Calendar Type: {{ selectedDate.type }}</p>
+    </div>
   </div>
-</template><script setup>
-import { ref, computed, watch } from 'vue';
-import DatePicker from '../src/components/DatePicker.vue';
+</template>
+
+<script setup>
+import { ref, watch } from 'vue';
+import DatePicker from 'vue3-hijri-gregorian-datepicker';
+import 'vue3-hijri-gregorian-datepicker/dist/style.css';
 
 // Reactive state
 const darkTheme = ref(false);
 const disabled = ref(false);
 const withTime = ref(false);
-const readOnly = ref(false);
-const initialType = ref('gregorian'); // Default to Hijri
+const readOnly = ref(true);
+const initialType = ref('gregorian');
 const language = ref('en');
 const customFormat = ref('');
-const selectedFormat = ref('');
+
 const selectedDate = ref({
-  date:new Date().toISOString().split('T')[0],//'28-10-1446
+  date: new Date().toISOString().split('T')[0],
   type: initialType.value
 });
 
@@ -114,61 +251,176 @@ watch(initialType, (newType) => {
   };
 });
 
-// Format options
-const gregorianFormats = [
- 
-  'yyyy-MM-dd',
-  'MM/dd/yyyy',
-  'dd-MM-yyyy',
-  'dd/MM/yyyy',
-  'yyyy-MM-dd HH:mm:ss',
-  'MM/dd/yyyy HH:mm:ss',
-  'dd-MM-yyyy HH:mm:ss',
-  'dd/MM/yyyy HH:mm:ss',
-];
-
-const hijriFormats = [
-  'iYYYY-iMM-iDD',
-  'iDD-iMM-iYYYY',
-  'iYYYY/iMM/iDD',
-  'iDD/iMM/iYYYY',
-  'iYYYY-iMM-iDD HH:mm:ss',
-  'iDD-iMM-iYYYY HH:mm:ss',
-  'iYYYY/iMM/iDD HH:mm:ss',
-  'iDD/iMM/iYYYY HH:mm:ss',
-];
-
-const availableFormats = computed(() => 
-  initialType.value === 'hijri' ? hijriFormats : gregorianFormats
-);
-
-const actualFormat = computed(() => 
-  customFormat.value || selectedFormat.value || ''
-);
-
-watch(selectedFormat, (newFormat) => {
-  if (newFormat) customFormat.value = newFormat;
-});
+const onCancel = () => {
+  console.log('Date picker cancelled');
+};
 </script>
 
+<style>
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.controls label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.output {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+</style>
 ```
 
 ## Props
 
-- `initialType` (String): Specifies the initial calendar type. Can be 'gregorian' or 'hijri'. Default is 'gregorian'.
-- `withTime` (Boolean): Enables time selection (hours, minutes, seconds). Default is `false`.
-- `modelValue` (Object): The selected date and time value in UTC format , Calender type.
-- `language` (String): The language for the UI. Can be 'en' for English or 'ar' for Arabic. Default is 'en'.
-- `format` (String): The format for displaying the date and time.
-- `disabled` (Boolean): Disables the date picker. Default is `false`.
-- `readOnly` (Boolean): Makes the date picker read-only. Default is `true`.
-- `darkTheme` (Boolean): The default theme is light . Default is `false`.
-- `placeholder` (String): Placeholder text for the date input field. Default is 'Select date'.
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `modelValue` | Object | `{ date: '', type: 'gregorian' }` | The selected date and calendar type |
+| `initialType` | String | `'gregorian'` | Initial calendar type (`'gregorian'` or `'hijri'`) |
+| `withTime` | Boolean | `false` | Enable time selection (hours, minutes, seconds) |
+| `language` | String | `'en'` | UI language (`'en'` for English or `'ar'` for Arabic) |
+| `format` | String | `''` | Custom date/time format string (uses moment.js format) |
+| `disabled` | Boolean | `false` | Disable the date picker |
+| `readOnly` | Boolean | `true` | Make the input field read-only |
+| `placeholder` | String | `'Select date'` | Placeholder text for the input field |
+| `darkTheme` | Boolean | `false` | Enable dark theme |
+
 ## Events
 
-- `update:modelValue`: Emits the selected date and time value in UTC format.
-- `cancel`: Emits when the date picker is closed without confirming a date.
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `update:modelValue` | `{ date: String, type: String }` | Emitted when a date is selected |
+| `cancel` | - | Emitted when the picker is closed without selecting |
+
+## Date Format Strings
+
+### Gregorian Calendar Formats
+
+The component uses [moment.js](https://momentjs.com/docs/#/displaying/format/) format tokens:
+
+- `DD-MM-YYYY` - Day-Month-Year (default)
+- `MM/DD/YYYY` - Month/Day/Year
+- `YYYY-MM-DD` - Year-Month-Day (ISO format)
+- `DD-MM-YYYY HH:mm:ss` - With time
+- `YYYY-MM-DD HH:mm:ss` - ISO format with time
+
+### Hijri Calendar Formats
+
+For Hijri dates, use the `i` prefix:
+
+- `iDD-iMM-iYYYY` - Hijri Day-Month-Year (default)
+- `iYYYY/iMM/iDD` - Hijri Year/Month/Day
+- `iDD-iMM-iYYYY HH:mm:ss` - With time
+
+### Common Format Tokens
+
+| Token | Output | Description |
+|-------|--------|-------------|
+| `YYYY` | 2025 | 4-digit year |
+| `MM` | 01-12 | Month |
+| `DD` | 01-31 | Day |
+| `HH` | 00-23 | Hours (24-hour) |
+| `mm` | 00-59 | Minutes |
+| `ss` | 00-59 | Seconds |
+| `iYYYY` | 1446 | Hijri year |
+| `iMM` | 01-12 | Hijri month |
+| `iDD` | 01-30 | Hijri day |
+
+## Styling
+
+The component comes with default styles that can be imported:
+
+```javascript
+import 'vue3-hijri-gregorian-datepicker/dist/style.css';
+```
+
+### Custom Styling
+
+You can override the default styles using CSS custom properties or by targeting the component classes:
+
+```css
+/* Custom theme colors */
+.dp__theme_light {
+  --dp-primary-color: #1976d2;
+  --dp-background-color: #ffffff;
+  --dp-text-color: #212121;
+}
+
+.dp__theme_dark {
+  --dp-primary-color: #90caf9;
+  --dp-background-color: #1e1e1e;
+  --dp-text-color: #ffffff;
+}
+```
+
+## Browser Support
+
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
+
+## Dependencies
+
+- Vue 3.x
+- moment-hijri
+- moment
+- date-fns
+
+## Development
+
+```bash
+# Clone the repository
+git clone https://github.com/inaat/vue3-hijri-gregorian-datepicker.git
+
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Author
+
+**Inayat Ullah**
+
+## Links
+
+- [GitHub Repository](https://github.com/inaat/vue3-hijri-gregorian-datepicker)
+- [NPM Package](https://www.npmjs.com/package/vue3-hijri-gregorian-datepicker)
+- [Report Issues](https://github.com/inaat/vue3-hijri-gregorian-datepicker/issues)
+
+## Acknowledgments
+
+- Built with Vue 3
+- Uses moment-hijri for Hijri calendar calculations
+- Inspired by the need for dual calendar support in Vue applications
+
+---
+
+Made with ❤️ for the Vue community

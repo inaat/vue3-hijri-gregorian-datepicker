@@ -23,15 +23,16 @@
               <span @click="toggleYearSelection">{{ currentMonth }} {{ currentYear }}</span>
               <DatePickerButton className="dp__btn dp--arrow-btn-nav" v-if="isYearSelection || isMonthSelection"
                 @click="nextYearsOrMonths"><span class="dp__inner_nav"><ForwardArrowIcon className="custom-forward-icon" :size="40" /></span></DatePickerButton>
-              <DatePickerButton className="dp__btn dp--arrow-btn-nav" v-else @click="nextMonth"><span
+              <DatePickerButton className="dp__btn dp--arrow-btn-nav" v-else @click="nextMonth" :disabled="isNextMonthDisabled"><span
                   class="dp__inner_nav"><ForwardArrowIcon className="custom-forward-icon" :size="40" /></span></DatePickerButton>
             </div>
 
             <!-- Year Selection -->
             <transition name="fade">
               <div v-if="isYearSelection" class="year-selection">
-                <div v-for="year in visibleYears" :key="year" :class="{ selected: year === currentYearNumber }"
-                  @click="selectYear(year)">
+                <div v-for="year in visibleYears" :key="year"
+                  :class="{ selected: year === currentYearNumber, disabled: isYearDisabled(year) }"
+                  @click="!isYearDisabled(year) && selectYear(year)">
                   {{ year }}
                 </div>
               </div>
@@ -40,8 +41,9 @@
             <!-- Month Selection -->
             <transition name="fade">
               <div v-if="isMonthSelection" class="month-selection">
-                <div v-for="(month, index) in months" :key="month" :class="{ selected: index === currentMonthIndex }"
-                  @click="selectMonth(index)">
+                <div v-for="(month, index) in months" :key="month"
+                  :class="{ selected: index === currentMonthIndex, disabled: isMonthDisabled(index) }"
+                  @click="!isMonthDisabled(index) && selectMonth(index)">
                   {{ month }}
                 </div>
               </div>
@@ -54,7 +56,8 @@
                   {{ day }}
                 </div>
                 <div v-for="day in daysInMonth" :key="day.date"
-                  :class="['calendar-day', { selected: isSelected(day.date) }]" @click="selectDate(day.date)">
+                  :class="['calendar-day', { selected: isSelected(day.date), disabled: isDateDisabled(day.date) }]"
+                  @click="!isDateDisabled(day.date) && selectDate(day.date)">
                   {{ day.day }}
                 </div>
               </div>
@@ -190,6 +193,10 @@ const props = defineProps({
   darkTheme: {
     type: Boolean,
     default: false
+  },
+  maxDate: {
+    type: String,
+    default: null, // Format: 'DD-MM-YYYY' for Gregorian or 'iDD-iMM-iYYYY' for Hijri
   }
 });
 
@@ -215,6 +222,97 @@ const isMonthSelection = ref(false);
 const yearRangeStart = ref(isHijri.value ? 1400 : 2000);
 const formattedHour = computed(() => pad(selectedHour.value));
 const formattedMinute = computed(() => pad(selectedMinute.value));
+
+// Parse maxDate prop
+const parsedMaxDate = computed(() => {
+  if (!props.maxDate) return null;
+
+  try {
+    // Try parsing as Gregorian first
+    const gregorianFormats = ["DD-MM-YYYY", "YYYY-MM-DD", "MM/DD/YYYY", "DD/MM/YYYY"];
+    for (const fmt of gregorianFormats) {
+      const parsed = moment(props.maxDate, fmt, true);
+      if (parsed.isValid()) {
+        return parsed.toDate();
+      }
+    }
+
+    // Try parsing as Hijri
+    const hijriFormats = ["iDD-iMM-iYYYY", "iYYYY/iMM/iDD", "iDD/iMM/iYYYY"];
+    for (const fmt of hijriFormats) {
+      const parsed = moment(props.maxDate, fmt);
+      if (parsed.isValid()) {
+        return parsed.toDate();
+      }
+    }
+
+    console.warn("Invalid maxDate format, ignoring maxDate prop");
+    return null;
+  } catch (e) {
+    console.error("Error parsing maxDate:", e);
+    return null;
+  }
+});
+
+// Check if a date is after maxDate
+const isDateDisabled = (date) => {
+  if (!parsedMaxDate.value || !date) return false;
+
+  const compareDate = new Date(date);
+  compareDate.setHours(0, 0, 0, 0);
+
+  const maxDateCompare = new Date(parsedMaxDate.value);
+  maxDateCompare.setHours(0, 0, 0, 0);
+
+  return compareDate > maxDateCompare;
+};
+
+// Check if navigation forward is disabled
+const isNextMonthDisabled = computed(() => {
+  if (!parsedMaxDate.value || !selectedDate.value) return false;
+
+  const nextMonth = isHijri.value
+    ? moment(selectedDate.value).add(1, "iMonth").startOf("iMonth").toDate()
+    : new Date(selectedDate.value.getFullYear(), selectedDate.value.getMonth() + 1, 1);
+
+  const maxDateCompare = new Date(parsedMaxDate.value);
+  maxDateCompare.setHours(0, 0, 0, 0);
+
+  return nextMonth > maxDateCompare;
+});
+
+// Check if a year is disabled
+const isYearDisabled = (year) => {
+  if (!parsedMaxDate.value) return false;
+
+  const maxYear = isHijri.value
+    ? parseInt(moment(parsedMaxDate.value).format("iYYYY"))
+    : parsedMaxDate.value.getFullYear();
+
+  return year > maxYear;
+};
+
+// Check if a month is disabled
+const isMonthDisabled = (monthIndex) => {
+  if (!parsedMaxDate.value || !selectedDate.value) return false;
+
+  const maxYear = isHijri.value
+    ? parseInt(moment(parsedMaxDate.value).format("iYYYY"))
+    : parsedMaxDate.value.getFullYear();
+
+  const maxMonth = isHijri.value
+    ? moment(parsedMaxDate.value).iMonth()
+    : parsedMaxDate.value.getMonth();
+
+  const currentYear = isHijri.value
+    ? parseInt(moment(selectedDate.value).format("iYYYY"))
+    : selectedDate.value.getFullYear();
+
+  if (currentYear > maxYear) return true;
+  if (currentYear === maxYear && monthIndex > maxMonth) return true;
+
+  return false;
+};
 
 const formattedDate = computed(() => {
   if (!props.modelValue.date) return '';

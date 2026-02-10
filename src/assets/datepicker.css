@@ -196,9 +196,16 @@
 }
 
 .calendar-day.selected {
-   
+
    border:1px solid var(--dp-primary-color)
-    
+
+}
+
+.calendar-day.disabled {
+    color: var(--dp-disabled-color-text);
+    background: var(--dp-disabled-color);
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 .year-selection,
@@ -224,6 +231,14 @@
 .month-selection .selected {
     background-color: #42b983;
     color: var(--dp-text-color);
+}
+
+.year-selection div.disabled,
+.month-selection div.disabled {
+    color: var(--dp-disabled-color-text);
+    background: var(--dp-disabled-color);
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 .time-scroller {

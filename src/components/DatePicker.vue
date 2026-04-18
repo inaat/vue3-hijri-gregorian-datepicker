@@ -1,11 +1,20 @@
 <template>
   <div ref="datepickerRef" :class="['datepicker','dp__main', themeClass]">
     <!-- Input field to trigger the date picker -->
-    <div class="datepicker-input" @click="openDatePicker">
-      <input class="dp__pointer dp__input_readonly dp__input dp__input_icon_pad dp__input_focus dp__input_reg" 
-        type="text" :value="formattedDate" :readOnly="readOnly" :placeholder="placeholder"
-        :disabled="disabled" />
-      <span class="datepicker-icon">
+    <div class="datepicker-input">
+      <input
+        :class="[
+          'dp__input dp__input_icon_pad dp__input_focus dp__input_reg',
+          readOnly ? 'dp__pointer dp__input_readonly' : 'dp__input_typeable',
+          { 'dp__input_invalid': hasInputError }
+        ]"
+        type="text" :value="inputValue" :readOnly="readOnly" :placeholder="effectivePlaceholder"
+        :disabled="disabled"
+        @click="handleInputClick"
+        @input="handleTypedInput"
+        @blur="handleInputBlur"
+        @keydown.enter.prevent="handleInputEnter" />
+      <span class="datepicker-icon" @click="openDatePicker">
         <CalendarIcon className="dp__input_icon dp__input_icons" :size="48" />
       </span>
     </div>
@@ -223,6 +232,10 @@ const selectedSecond = ref(currentDate.value.getSeconds());
 const isYearSelection = ref(false);
 const isMonthSelection = ref(false);
 
+const typedValue = ref('');
+const isTyping = ref(false);
+const hasInputError = ref(false);
+
 const yearRangeStart = ref(isHijri.value ? 1400 : 2000);
 const formattedHour = computed(() => pad(selectedHour.value));
 const formattedMinute = computed(() => pad(selectedMinute.value));
@@ -438,6 +451,102 @@ const formattedDate = computed(() => {
     return dateToFormat ? dateToFormat.toLocaleDateString() : '';
   }
 });
+
+const inputValue = computed(() => isTyping.value ? typedValue.value : formattedDate.value);
+
+const effectivePlaceholder = computed(() => {
+  if (props.placeholder && props.placeholder !== 'Select date') return props.placeholder;
+  if (props.readOnly) return props.placeholder;
+  return isHijri.value ? 'iDD-iMM-iYYYY' : 'DD-MM-YYYY';
+});
+
+const tryParseDate = (dateString, calendarType) => {
+  if (!dateString) return null;
+  try {
+    if (calendarType === "hijri") {
+      const formats = ["iDD-iMM-iYYYY HH:mm:ss", "iDD-iMM-iYYYY", "iYYYY/iMM/iDD", "iDD/iMM/iYYYY"];
+      for (const fmt of formats) {
+        const parsed = moment(dateString, fmt);
+        if (parsed.isValid()) return parsed.toDate();
+      }
+    } else {
+      const formats = ["DD-MM-YYYY HH:mm:ss", "DD-MM-YYYY", "YYYY-MM-DD", "MM/DD/YYYY", "DD/MM/YYYY"];
+      for (const fmt of formats) {
+        const parsed = moment(dateString, fmt, true);
+        if (parsed.isValid()) return parsed.toDate();
+      }
+    }
+  } catch (e) {
+    return null;
+  }
+  return null;
+};
+
+const handleInputClick = () => {
+  if (props.readOnly) openDatePicker();
+};
+
+const handleTypedInput = (event) => {
+  isTyping.value = true;
+  typedValue.value = event.target.value;
+
+  const trimmed = typedValue.value.trim();
+  if (!trimmed) {
+    hasInputError.value = false;
+    return;
+  }
+  const calendarType = isHijri.value ? "hijri" : "gregorian";
+  const parsed = tryParseDate(trimmed, calendarType);
+  hasInputError.value = !parsed || isDateDisabled(parsed);
+};
+
+const commitTypedValue = () => {
+  if (!isTyping.value) return;
+  isTyping.value = false;
+
+  const input = typedValue.value.trim();
+  const calendarType = isHijri.value ? "hijri" : "gregorian";
+
+  if (!input) {
+    emit("update:modelValue", { date: '', type: calendarType });
+    typedValue.value = '';
+    hasInputError.value = false;
+    return;
+  }
+
+  const parsed = tryParseDate(input, calendarType);
+  if (!parsed || isDateDisabled(parsed)) {
+    typedValue.value = '';
+    hasInputError.value = false;
+    return;
+  }
+
+  selectedDate.value = parsed;
+  if (props.withTime) {
+    selectedHour.value = parsed.getHours();
+    selectedMinute.value = parsed.getMinutes();
+    selectedSecond.value = parsed.getSeconds();
+  }
+
+  let outputFormat;
+  if (props.format) {
+    outputFormat = props.format;
+  } else if (calendarType === "hijri") {
+    outputFormat = props.withTime ? "iDD-iMM-iYYYY HH:mm:ss" : "iDD-iMM-iYYYY";
+  } else {
+    outputFormat = props.withTime ? "DD-MM-YYYY HH:mm:ss" : "DD-MM-YYYY";
+  }
+
+  emit("update:modelValue", {
+    date: moment(parsed).format(outputFormat),
+    type: calendarType,
+  });
+  typedValue.value = '';
+  hasInputError.value = false;
+};
+
+const handleInputBlur = () => commitTypedValue();
+const handleInputEnter = () => commitTypedValue();
 
 const parseInputDate = (dateString, calendarType) => {
   if (!dateString) return new Date();

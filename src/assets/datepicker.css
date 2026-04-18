@@ -325,6 +325,17 @@
 .dp__input_focus{
     border-color:var(--dp-border-color-focus)
 }
+.dp__input_typeable{
+    cursor:text;
+    caret-color:auto
+}
+.dp__input_invalid{
+    border-color:#dc3545 !important;
+    color:#dc3545
+}
+.dp__input_invalid:focus{
+    box-shadow:0 0 0 2px rgba(220,53,69,.15)
+}
 .dp__disabled{
     background:var(--dp-disabled-color)
 }

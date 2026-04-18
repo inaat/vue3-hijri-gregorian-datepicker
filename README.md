@@ -25,6 +25,8 @@ A comprehensive Vue 3 date picker component that seamlessly supports both Hijri 
 
 🚫 **Min/Max Date**: Restrict selectable dates with `minDate` and `maxDate` props
 
+⌨️ **Typeable Input**: Users can type the date directly in the input field (set `readOnly="false"`) with live validation
+
 ## Installation
 
 ```bash
@@ -216,6 +218,33 @@ const todayDate = computed(() => {
 </script>
 ```
 
+### Typeable Input (Keyboard Entry)
+
+Set `readOnly="false"` to let users type the date directly. The input validates as they type — showing a red border on invalid or out-of-range values — and commits on **Enter** or **blur**. The calendar icon still opens the picker.
+
+```vue
+<template>
+  <DatePicker
+    v-model="selectedDate"
+    :readOnly="false"
+    initialType="gregorian"
+  />
+</template>
+
+<script setup>
+import { ref } from 'vue';
+import DatePicker from 'vue3-hijri-gregorian-datepicker';
+import 'vue3-hijri-gregorian-datepicker/dist/style.css';
+
+const selectedDate = ref({ date: '', type: 'gregorian' });
+</script>
+```
+
+Accepted typed formats:
+
+- **Gregorian**: `DD-MM-YYYY`, `YYYY-MM-DD`, `MM/DD/YYYY`, `DD/MM/YYYY` (with optional ` HH:mm:ss` when `withTime` is enabled)
+- **Hijri**: `iDD-iMM-iYYYY`, `iYYYY/iMM/iDD`, `iDD/iMM/iYYYY`
+
 ### Complete Example with All Options
 
 ```vue
@@ -337,7 +366,7 @@ const onCancel = () => {
 | `language` | String | `'en'` | UI language (`'en'` for English or `'ar'` for Arabic) |
 | `format` | String | `''` | Custom date/time format string (uses moment.js format) |
 | `disabled` | Boolean | `false` | Disable the date picker |
-| `readOnly` | Boolean | `true` | Make the input field read-only |
+| `readOnly` | Boolean | `true` | Make the input field read-only. Set to `false` to allow the user to type the date directly (with live validation) |
 | `placeholder` | String | `'Select date'` | Placeholder text for the input field |
 | `darkTheme` | Boolean | `false` | Enable dark theme |
 | `minDate` | String | `null` | Minimum selectable date (`'DD-MM-YYYY'` for Gregorian, `'iDD-iMM-iYYYY'` for Hijri) |

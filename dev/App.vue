@@ -112,6 +112,20 @@
       <p><strong>Selected:</strong> {{ testDate8 }}</p>
     </div>
 
+    <!-- Test 9: Typeable input (readOnly=false) -->
+    <div style="margin: 20px 0; padding: 20px; border: 1px solid #ddd; background: #fffbe6;">
+      <h3>Test 9: Type the date directly (readOnly=false)</h3>
+      <p>Type a date like <code>15-06-2025</code> then press Enter or click outside.</p>
+      <DatePicker
+        :initialType="'gregorian'"
+        :withTime="false"
+        v-model="testDate9"
+        :language="'en'"
+        :readOnly="false"
+      />
+      <p><strong>Selected:</strong> {{ testDate9 }}</p>
+    </div>
+
     <hr>
 
     <!-- Original Tests -->
@@ -152,6 +166,7 @@ const testDate5 = ref({ date: null, type: 'gregorian' });
 const testDate6 = ref({ date: null, type: 'gregorian' });
 const testDate7 = ref({ date: null, type: 'gregorian' });
 const testDate8 = ref({ date: null, type: 'gregorian' });
+const testDate9 = ref({ date: null, type: 'gregorian' });
 
 // Get today's date in DD-MM-YYYY format
 const todayDate = computed(() => {

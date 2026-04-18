@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <h1>DatePicker maxDate Feature Tests</h1>
+    <h1>DatePicker maxDate &amp; minDate Feature Tests</h1>
 
     <!-- Test 1: Without maxDate -->
     <div style="margin: 20px 0; padding: 20px; border: 1px solid #ddd;">
@@ -69,6 +69,49 @@
       <p><strong>Selected:</strong> {{ testDate5 }}</p>
     </div>
 
+    <!-- Test 6: With minDate only -->
+    <div style="margin: 20px 0; padding: 20px; border: 1px solid #ddd; background: #f0fff0;">
+      <h3>Test 6: minDate="01-01-2025"</h3>
+      <p style="color: red;">Dates before 1 January 2025 should be DISABLED</p>
+      <DatePicker
+        :initialType="'gregorian'"
+        :withTime="false"
+        v-model="testDate6"
+        :language="'en'"
+        :minDate="'01-01-2025'"
+      />
+      <p><strong>Selected:</strong> {{ testDate6 }}</p>
+    </div>
+
+    <!-- Test 7: With both minDate and maxDate -->
+    <div style="margin: 20px 0; padding: 20px; border: 1px solid #ddd; background: #fff0f0;">
+      <h3>Test 7: minDate="01-03-2025" + maxDate="30-06-2025"</h3>
+      <p style="color: red;">Only dates between 1 March 2025 and 30 June 2025 should be selectable</p>
+      <DatePicker
+        :initialType="'gregorian'"
+        :withTime="false"
+        v-model="testDate7"
+        :language="'en'"
+        :minDate="'01-03-2025'"
+        :maxDate="'30-06-2025'"
+      />
+      <p><strong>Selected:</strong> {{ testDate7 }}</p>
+    </div>
+
+    <!-- Test 8: minDate = Today -->
+    <div style="margin: 20px 0; padding: 20px; border: 1px solid #ddd; background: #f0f0ff;">
+      <h3>Test 8: minDate=Today ({{ todayDate }}) — Future dates only</h3>
+      <p style="color: red;">All past dates should be DISABLED</p>
+      <DatePicker
+        :initialType="'gregorian'"
+        :withTime="false"
+        v-model="testDate8"
+        :language="'en'"
+        :minDate="todayDate"
+      />
+      <p><strong>Selected:</strong> {{ testDate8 }}</p>
+    </div>
+
     <hr>
 
     <!-- Original Tests -->
@@ -106,6 +149,9 @@ const testDate2 = ref({ date: null, type: 'gregorian' });
 const testDate3 = ref({ date: null, type: 'gregorian' });
 const testDate4 = ref({ date: null, type: 'gregorian' });
 const testDate5 = ref({ date: null, type: 'gregorian' });
+const testDate6 = ref({ date: null, type: 'gregorian' });
+const testDate7 = ref({ date: null, type: 'gregorian' });
+const testDate8 = ref({ date: null, type: 'gregorian' });
 
 // Get today's date in DD-MM-YYYY format
 const todayDate = computed(() => {

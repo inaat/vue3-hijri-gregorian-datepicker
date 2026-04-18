@@ -18,7 +18,7 @@
             <div class="calendar-header">
               <DatePickerButton className="dp__btn dp--arrow-btn-nav" v-if="isYearSelection || isMonthSelection"
                 @click="prevYearsOrMonths"><span class="dp__inner_nav"><BackArrowIcon className="custom-arrow-icon" :size="40" /></span></DatePickerButton>
-              <DatePickerButton className="dp__btn dp--arrow-btn-nav" v-else @click="prevMonth"><span
+              <DatePickerButton className="dp__btn dp--arrow-btn-nav" v-else @click="prevMonth" :disabled="isPrevMonthDisabled"><span
                   class="dp__inner_nav"><BackArrowIcon className="custom-arrow-icon" :size="40" /></span></DatePickerButton>
               <span @click="toggleYearSelection">{{ currentMonth }} {{ currentYear }}</span>
               <DatePickerButton className="dp__btn dp--arrow-btn-nav" v-if="isYearSelection || isMonthSelection"
@@ -197,6 +197,10 @@ const props = defineProps({
   maxDate: {
     type: String,
     default: null, // Format: 'DD-MM-YYYY' for Gregorian or 'iDD-iMM-iYYYY' for Hijri
+  },
+  minDate: {
+    type: String,
+    default: null, // Format: 'DD-MM-YYYY' for Gregorian or 'iDD-iMM-iYYYY' for Hijri
   }
 });
 
@@ -254,17 +258,58 @@ const parsedMaxDate = computed(() => {
   }
 });
 
-// Check if a date is after maxDate
+// Parse minDate prop
+const parsedMinDate = computed(() => {
+  if (!props.minDate) return null;
+
+  try {
+    // Try parsing as Gregorian first
+    const gregorianFormats = ["DD-MM-YYYY", "YYYY-MM-DD", "MM/DD/YYYY", "DD/MM/YYYY"];
+    for (const fmt of gregorianFormats) {
+      const parsed = moment(props.minDate, fmt, true);
+      if (parsed.isValid()) {
+        return parsed.toDate();
+      }
+    }
+
+    // Try parsing as Hijri
+    const hijriFormats = ["iDD-iMM-iYYYY", "iYYYY/iMM/iDD", "iDD/iMM/iYYYY"];
+    for (const fmt of hijriFormats) {
+      const parsed = moment(props.minDate, fmt);
+      if (parsed.isValid()) {
+        return parsed.toDate();
+      }
+    }
+
+    console.warn("Invalid minDate format, ignoring minDate prop");
+    return null;
+  } catch (e) {
+    console.error("Error parsing minDate:", e);
+    return null;
+  }
+});
+
+// Check if a date is after maxDate or before minDate
 const isDateDisabled = (date) => {
-  if (!parsedMaxDate.value || !date) return false;
+  if (!date) return false;
+  if (!parsedMaxDate.value && !parsedMinDate.value) return false;
 
   const compareDate = new Date(date);
   compareDate.setHours(0, 0, 0, 0);
 
-  const maxDateCompare = new Date(parsedMaxDate.value);
-  maxDateCompare.setHours(0, 0, 0, 0);
+  if (parsedMaxDate.value) {
+    const maxDateCompare = new Date(parsedMaxDate.value);
+    maxDateCompare.setHours(0, 0, 0, 0);
+    if (compareDate > maxDateCompare) return true;
+  }
 
-  return compareDate > maxDateCompare;
+  if (parsedMinDate.value) {
+    const minDateCompare = new Date(parsedMinDate.value);
+    minDateCompare.setHours(0, 0, 0, 0);
+    if (compareDate < minDateCompare) return true;
+  }
+
+  return false;
 };
 
 // Check if navigation forward is disabled
@@ -281,35 +326,75 @@ const isNextMonthDisabled = computed(() => {
   return nextMonth > maxDateCompare;
 });
 
+// Check if navigation backward is disabled
+const isPrevMonthDisabled = computed(() => {
+  if (!parsedMinDate.value || !selectedDate.value) return false;
+
+  const prevMonthEnd = isHijri.value
+    ? moment(selectedDate.value).subtract(1, "iMonth").endOf("iMonth").toDate()
+    : new Date(selectedDate.value.getFullYear(), selectedDate.value.getMonth(), 0);
+
+  const minDateCompare = new Date(parsedMinDate.value);
+  minDateCompare.setHours(0, 0, 0, 0);
+
+  return prevMonthEnd < minDateCompare;
+});
+
 // Check if a year is disabled
 const isYearDisabled = (year) => {
-  if (!parsedMaxDate.value) return false;
+  if (!parsedMaxDate.value && !parsedMinDate.value) return false;
 
-  const maxYear = isHijri.value
-    ? parseInt(moment(parsedMaxDate.value).format("iYYYY"))
-    : parsedMaxDate.value.getFullYear();
+  if (parsedMaxDate.value) {
+    const maxYear = isHijri.value
+      ? parseInt(moment(parsedMaxDate.value).format("iYYYY"))
+      : parsedMaxDate.value.getFullYear();
+    if (year > maxYear) return true;
+  }
 
-  return year > maxYear;
+  if (parsedMinDate.value) {
+    const minYear = isHijri.value
+      ? parseInt(moment(parsedMinDate.value).format("iYYYY"))
+      : parsedMinDate.value.getFullYear();
+    if (year < minYear) return true;
+  }
+
+  return false;
 };
 
 // Check if a month is disabled
 const isMonthDisabled = (monthIndex) => {
-  if (!parsedMaxDate.value || !selectedDate.value) return false;
-
-  const maxYear = isHijri.value
-    ? parseInt(moment(parsedMaxDate.value).format("iYYYY"))
-    : parsedMaxDate.value.getFullYear();
-
-  const maxMonth = isHijri.value
-    ? moment(parsedMaxDate.value).iMonth()
-    : parsedMaxDate.value.getMonth();
+  if (!selectedDate.value) return false;
+  if (!parsedMaxDate.value && !parsedMinDate.value) return false;
 
   const currentYear = isHijri.value
     ? parseInt(moment(selectedDate.value).format("iYYYY"))
     : selectedDate.value.getFullYear();
 
-  if (currentYear > maxYear) return true;
-  if (currentYear === maxYear && monthIndex > maxMonth) return true;
+  if (parsedMaxDate.value) {
+    const maxYear = isHijri.value
+      ? parseInt(moment(parsedMaxDate.value).format("iYYYY"))
+      : parsedMaxDate.value.getFullYear();
+
+    const maxMonth = isHijri.value
+      ? moment(parsedMaxDate.value).iMonth()
+      : parsedMaxDate.value.getMonth();
+
+    if (currentYear > maxYear) return true;
+    if (currentYear === maxYear && monthIndex > maxMonth) return true;
+  }
+
+  if (parsedMinDate.value) {
+    const minYear = isHijri.value
+      ? parseInt(moment(parsedMinDate.value).format("iYYYY"))
+      : parsedMinDate.value.getFullYear();
+
+    const minMonth = isHijri.value
+      ? moment(parsedMinDate.value).iMonth()
+      : parsedMinDate.value.getMonth();
+
+    if (currentYear < minYear) return true;
+    if (currentYear === minYear && monthIndex < minMonth) return true;
+  }
 
   return false;
 };
@@ -810,6 +895,13 @@ onMounted(() => {
     const calendarType = props.modelValue.type || props.initialType;
     selectedDate.value = parseInputDate(props.modelValue.date, calendarType);
 
+    // Clamp to min/max range
+    if (parsedMaxDate.value && selectedDate.value > parsedMaxDate.value) {
+      selectedDate.value = new Date(parsedMaxDate.value);
+    } else if (parsedMinDate.value && selectedDate.value < parsedMinDate.value) {
+      selectedDate.value = new Date(parsedMinDate.value);
+    }
+
     // Extract time components
     selectedHour.value = selectedDate.value.getHours();
     selectedMinute.value = selectedDate.value.getMinutes();
@@ -819,6 +911,13 @@ onMounted(() => {
     selectedDate.value = isHijri.value
       ? moment().startOf("day").toDate()  // Hijri default
       : new Date();                        // Gregorian default
+
+    // Clamp to min/max range so the calendar opens within the allowed range
+    if (parsedMaxDate.value && selectedDate.value > parsedMaxDate.value) {
+      selectedDate.value = new Date(parsedMaxDate.value);
+    } else if (parsedMinDate.value && selectedDate.value < parsedMinDate.value) {
+      selectedDate.value = new Date(parsedMinDate.value);
+    }
 
     selectedHour.value = selectedDate.value.getHours();
     selectedMinute.value = selectedDate.value.getMinutes();

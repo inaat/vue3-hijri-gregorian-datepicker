@@ -23,6 +23,8 @@ A comprehensive Vue 3 date picker component that seamlessly supports both Hijri 
 
 📱 **Responsive**: Works great on mobile and desktop
 
+🚫 **Min/Max Date**: Restrict selectable dates with `minDate` and `maxDate` props
+
 ## Installation
 
 ```bash
@@ -168,6 +170,52 @@ const selectedDate = ref({
 </script>
 ```
 
+### With minDate and maxDate
+
+```vue
+<template>
+  <!-- Only allow dates between 1 March 2025 and 30 June 2025 -->
+  <DatePicker
+    v-model="selectedDate"
+    initialType="gregorian"
+    minDate="01-03-2025"
+    maxDate="30-06-2025"
+  />
+
+  <!-- Only allow future dates -->
+  <DatePicker
+    v-model="futureDate"
+    initialType="gregorian"
+    :minDate="todayDate"
+  />
+
+  <!-- Only allow past dates up to today -->
+  <DatePicker
+    v-model="pastDate"
+    initialType="gregorian"
+    :maxDate="todayDate"
+  />
+</template>
+
+<script setup>
+import { ref, computed } from 'vue';
+import DatePicker from 'vue3-hijri-gregorian-datepicker';
+import 'vue3-hijri-gregorian-datepicker/dist/style.css';
+
+const selectedDate = ref({ date: '', type: 'gregorian' });
+const futureDate = ref({ date: '', type: 'gregorian' });
+const pastDate = ref({ date: '', type: 'gregorian' });
+
+const todayDate = computed(() => {
+  const today = new Date();
+  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const year = today.getFullYear();
+  return `${day}-${month}-${year}`;
+});
+</script>
+```
+
 ### Complete Example with All Options
 
 ```vue
@@ -292,6 +340,8 @@ const onCancel = () => {
 | `readOnly` | Boolean | `true` | Make the input field read-only |
 | `placeholder` | String | `'Select date'` | Placeholder text for the input field |
 | `darkTheme` | Boolean | `false` | Enable dark theme |
+| `minDate` | String | `null` | Minimum selectable date (`'DD-MM-YYYY'` for Gregorian, `'iDD-iMM-iYYYY'` for Hijri) |
+| `maxDate` | String | `null` | Maximum selectable date (`'DD-MM-YYYY'` for Gregorian, `'iDD-iMM-iYYYY'` for Hijri) |
 
 ## Events
 

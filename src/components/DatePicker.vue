@@ -155,7 +155,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue";
 import moment from "moment-hijri";
 import { addMonths, subMonths } from "date-fns";
 import DatePickerButton from "./common/DatePickerButton.vue";
@@ -1044,6 +1044,41 @@ onMounted(() => {
   // Update visible years in the calendar
   updateVisibleYears();
 });
+
+// Keep internal state in sync when the parent mutates modelValue after mount.
+// Without this, the displayed text stays frozen on whatever was set at mount time.
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    if (!newVal || !newVal.date) return;
+
+    const calendarType = newVal.type || props.initialType;
+    const parsed = parseInputDate(newVal.date, calendarType);
+    if (!parsed) return;
+
+    // Skip if already in sync (avoids feedback loop from our own emits)
+    if (selectedDate.value && parsed.getTime() === selectedDate.value.getTime()) return;
+
+    selectedDate.value = parsed;
+
+    if (parsedMaxDate.value && selectedDate.value > parsedMaxDate.value) {
+      selectedDate.value = new Date(parsedMaxDate.value);
+    } else if (parsedMinDate.value && selectedDate.value < parsedMinDate.value) {
+      selectedDate.value = new Date(parsedMinDate.value);
+    }
+
+    selectedHour.value = selectedDate.value.getHours();
+    selectedMinute.value = selectedDate.value.getMinutes();
+    selectedSecond.value = selectedDate.value.getSeconds();
+
+    const currentYear = isHijri.value
+      ? parseInt(moment(selectedDate.value).format("iYYYY"))
+      : selectedDate.value.getFullYear();
+    yearRangeStart.value = Math.floor(currentYear / 10) * 10;
+    updateVisibleYears();
+  },
+  { deep: true }
+);
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside);
